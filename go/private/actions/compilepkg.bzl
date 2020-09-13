@@ -67,7 +67,9 @@ def emit_compilepkg(
     if cover and go.coverdata:
         inputs.append(go.coverdata.data.export_file)
         args.add("-arc", _archive(go.coverdata))
-        if go.mode.race:
+        if go.mode.covermode == "func":
+            args.add("-cover_mode", "func")
+        elif go.mode.race:
             args.add("-cover_mode", "atomic")
         else:
             args.add("-cover_mode", "set")

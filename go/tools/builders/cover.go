@@ -66,19 +66,28 @@ func cover(args []string) error {
 // a coverage-instrumented version of the file. It also registers the file
 // with the coverdata package.
 func instrumentForCoverage(goenv *env, srcPath, srcName, coverVar, mode, outPath string) error {
-	goargs := goenv.goTool("cover", "-var", coverVar, "-mode", mode, "-o", outPath, srcPath)
-	if err := goenv.runCommand(goargs); err != nil {
-		return err
-	}
 
-	return registerCoverage(outPath, coverVar, srcName)
+	//////////////////////////////////////////////////////////////////////////////////////////////
+	// Implementing a different mode (lets say mode=func) doesn't broke the current implementation
+	if mode == "func" {
+		err := instrumentForFunctionCoverage(srcPath, srcName, coverVar, outPath)
+		if err != nil {
+			return err
+		}
+	} else {
+		goargs := goenv.goTool("cover", "-var", coverVar, "-mode", mode, "-o", outPath, srcPath)
+		if err := goenv.runCommand(goargs); err != nil {
+			return err
+		}
+	}
+	return registerCoverage(outPath, coverVar, srcName, mode)
 }
 
 // registerCoverage modifies coverSrc, the output file from go tool cover. It
 // adds a call to coverdata.RegisterCoverage, which ensures the coverage
 // data from each file is reported. The name by which the file is registered
 // need not match its original name (it may use the importpath).
-func registerCoverage(coverSrc, varName, srcName string) error {
+func registerCoverage(coverSrc, varName, srcName, mode string) error {
 	// Parse the file.
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, coverSrc, nil, parser.ParseComments)
@@ -121,14 +130,21 @@ func registerCoverage(coverSrc, varName, srcName string) error {
 	}
 
 	// Append an init function.
-	fmt.Fprintf(&buf, `
+	if mode == "func" {
+		fmt.Fprintf(&buf, `
+func init() {
+	%s.RegisterFileFuncCover(%s.SourcePath, %s.FuncNames, %s.FuncLines, %s.Counts)
+}`, coverdataName, varName, varName, varName, varName)
+	} else {
+		fmt.Fprintf(&buf, `
 func init() {
 	%s.RegisterFile(%q,
 		%[3]s.Count[:],
 		%[3]s.Pos[:],
 		%[3]s.NumStmt[:])
-}
-`, coverdataName, srcName, varName)
+}`, coverdataName, srcName, varName)
+	}
+
 	if err := ioutil.WriteFile(coverSrc, buf.Bytes(), 0666); err != nil {
 		return fmt.Errorf("registerCoverage: %v", err)
 	}

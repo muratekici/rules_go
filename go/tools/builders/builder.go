@@ -29,6 +29,7 @@ func main() {
 	log.SetPrefix("builder: ")
 
 	args, err := readParamsFiles(os.Args[1:])
+
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -81,6 +81,7 @@ def get_mode(ctx, go_toolchain, cgo_context_info, go_config_info):
         "on" if ("msan" in ctx.features and not pure) else "auto",
         go_config_info.msan if go_config_info else "off",
     )
+    covermode = ctx.configuration.coverage_mode
     strip = go_config_info.strip if go_config_info else False
     stamp = go_config_info.stamp if go_config_info else False
     debug = go_config_info.debug if go_config_info else False
@@ -116,6 +117,7 @@ def get_mode(ctx, go_toolchain, cgo_context_info, go_config_info):
         goos = goos,
         goarch = goarch,
         tags = tags,
+        covermode = covermode,
     )
 
 def installsuffix(mode):

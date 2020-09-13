@@ -112,6 +112,11 @@ func readFileInfo(bctx build.Context, input string, needPackage bool) (fileInfo,
 		}
 	}
 
+	//fmt.Println(input)
+
+	// dat, err := ioutil.ReadFile(input)
+	// fmt.Print(string(dat))
+
 	dir, base := filepath.Split(input)
 	// Check build constraints on non-cgo files.
 	// Skip cgo files, since they get rejected (due to leading '_') and won't

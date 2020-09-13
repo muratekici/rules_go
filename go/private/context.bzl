@@ -213,6 +213,7 @@ def _library_to_source(go, attr, library, coverage_instrumented):
     attr_srcs = [f for t in getattr(attr, "srcs", []) for f in as_iterable(t.files)]
     generated_srcs = getattr(library, "srcs", [])
     srcs = attr_srcs + generated_srcs
+    xx = (getattr(attr, "deps", []))
     source = {
         "library": library,
         "mode": go.mode,
@@ -229,7 +230,7 @@ def _library_to_source(go, attr, library, coverage_instrumented):
         "cppopts": getattr(attr, "cppopts", []),
         "copts": getattr(attr, "copts", []),
         "cxxopts": getattr(attr, "cxxopts", []),
-        "clinkopts": getattr(attr, "clinkopts", []),
+        "clinkopts": getattr(attr, "cliginkopts", []),
         "cgo_deps": [],
         "cgo_exports": [],
     }
@@ -238,6 +239,9 @@ def _library_to_source(go, attr, library, coverage_instrumented):
     for dep in source["deps"]:
         _check_binary_dep(go, dep, "deps")
     for e in getattr(attr, "embed", []):
+        _check_binary_dep(go, e, "embed")
+        _merge_embed(source, e)
+    for e in getattr(attr, "_embed_library", []):
         _check_binary_dep(go, e, "embed")
         _merge_embed(source, e)
     source["deps"] = _dedup_deps(source["deps"])
@@ -344,6 +348,7 @@ def go_context(ctx, attr = None):
     """Returns an API used to build Go code.
 
     See /go/toolchains.rst#go-context"""
+    
     if not attr:
         attr = ctx.attr
     toolchain = ctx.toolchains["@io_bazel_rules_go//go:toolchain"]
@@ -352,6 +357,7 @@ def go_context(ctx, attr = None):
     stdlib = None
     coverdata = None
     nogo = None
+    
     if hasattr(attr, "_go_context_data"):
         if CgoContextInfo in attr._go_context_data:
             cgo_context_info = attr._go_context_data[CgoContextInfo]
@@ -383,7 +389,6 @@ def go_context(ctx, attr = None):
         "GOROOT": goroot,
         "GOROOT_FINAL": "GOROOT",
         "CGO_ENABLED": "0" if mode.pure else "1",
-
         # If we use --action_env=GOPATH, or in other cases where environment
         # variables are passed through to this builder, the SDK build will try
         # to write to that GOPATH (e.g. for x/net/nettest). This will fail if

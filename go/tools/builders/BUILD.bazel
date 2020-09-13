@@ -32,6 +32,8 @@ filegroup(
         "pack.go",
         "replicate.go",
         "stdlib.go",
+        "funccover_helper.go",
+        "funccover_instrumenter.go"
     ] + select({
         "@bazel_tools//src/conditions:windows": ["path_windows.go"],
         "//conditions:default": ["path.go"],
@@ -69,11 +71,7 @@ go_source(
 
 go_binary(
     name = "go_path",
-    srcs = [
-        "env.go",
-        "flags.go",
-        "go_path.go",
-    ],
+    srcs = ["go_path.go"],
     visibility = ["//visibility:public"],
 )
 
