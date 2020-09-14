@@ -12,7 +12,7 @@
 //See the License for the specific language governing permissions and
 //limitations under the License.
 
-// This code implements a source file instrumentation function
+// This code implements source file instrumentation function
 package main
 
 import (
@@ -31,7 +31,7 @@ type Instrumentation struct {
 	srcName  string
 }
 
-// AddFile saves given file to instrument
+// SaveFile, saves given file to instrumentation
 func (h *Instrumentation) saveFile(src string) error {
 
 	if h.fset == nil {
@@ -48,11 +48,12 @@ func (h *Instrumentation) saveFile(src string) error {
 	return nil
 }
 
-// Instrument instruments the content saved in h
+// Instrument, instruments the content saved in Instrumentation
 func (h *Instrumentation) instrument() ([]byte, error) {
 
 	var funcCover = []FuncCoverBlock{}
 
+	// Saves the function data to funcCover
 	funcCover, err := SaveFuncs(h.srcName, h.content)
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func (h *Instrumentation) instrument() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	// Inserts necessary instructions to the functions
-	hasMain, err := addCounters(buf, h.content, h.coverVar)
+	hasMain, err := InsertInstructions(buf, h.content, h.coverVar)
 
 	if err != nil {
 		return nil, err
@@ -81,7 +82,7 @@ func (h *Instrumentation) writeInstrumented(instrumented []byte) error {
 	return nil
 }
 
-//
+// instrumentForFunctionCoverage instruments the file given and writes it to outPath
 func instrumentForFunctionCoverage(srcPath, srcName, coverVar, outPath string) error {
 
 	var instrumentation = Instrumentation{

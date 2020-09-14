@@ -26,13 +26,13 @@ import (
 )
 
 // FuncCoverBlock contains tha name and line of a function
-// Line contains the first line of the definition in the source code
+// Line contains the line of the definition in the source code
 type FuncCoverBlock struct {
 	Name string
 	Line int32
 }
 
-// SaveFuncs parses given source code and returns a FuncCover instance, also returns true if main function is given
+// SaveFuncs parses given source code and returns a FuncCover instance
 func SaveFuncs(src string, content []byte) ([]FuncCoverBlock, error) {
 
 	fset := token.NewFileSet()
@@ -66,8 +66,8 @@ func astToByte(fset *token.FileSet, f *ast.File) []byte {
 	return buf.Bytes()
 }
 
-// Writes necessary set instrucions for instrumentation to cover variable
-func addCounters(w io.Writer, content []byte, coverVar string) (bool, error) {
+// Writes necessary set instrucions for instrumentation to function definitions
+func InsertInstructions(w io.Writer, content []byte, coverVar string) (bool, error) {
 
 	fset := token.NewFileSet()
 	parsedFile, err := parser.ParseFile(fset, "", content, parser.ParseComments)
@@ -103,6 +103,7 @@ func addCounters(w io.Writer, content []byte, coverVar string) (bool, error) {
 	// 	...
 	// }
 	// Also inserts defer LastCallForFunccoverReport() to the beginning of main()
+	// Initially this is just an empty function but handler can override it
 	// func main {
 	// 	defer LastCallForFunccoverReport()
 	//	...
@@ -112,7 +113,7 @@ func addCounters(w io.Writer, content []byte, coverVar string) (bool, error) {
 
 	for i := 0; i < contentLength; i++ {
 		if eventIndex < len(events) && i == events[eventIndex] {
-			fmt.Fprintf(w, "\n\t%s.Counts[%v] = true;", coverVar, eventIndex)
+			fmt.Fprintf(w, "\n\t%s.Flags[%v] = true;", coverVar, eventIndex)
 			eventIndex++
 		}
 		fmt.Fprintf(w, "%s", string(content[i]))
@@ -156,7 +157,7 @@ var {{.CoverVar}} = struct {
 	SourcePath		string
 	FuncNames		[]string
 	FuncLines		[]int32
-	Counts			[]bool
+	Flags			[]bool
 } {
 	SourcePath: "{{.SourceName}}",
 	FuncNames: []string{ {{range .FuncBlocks}}
@@ -165,7 +166,7 @@ var {{.CoverVar}} = struct {
 	FuncLines: []int32{ {{range .FuncBlocks}}
 		{{.Line}},{{end}}
 	},
-	Counts: []bool{ {{range .FuncBlocks}}
+	Flags: []bool{ {{range .FuncBlocks}}
 		false,{{end}}
 	},
 }

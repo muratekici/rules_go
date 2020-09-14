@@ -67,8 +67,6 @@ func cover(args []string) error {
 // with the coverdata package.
 func instrumentForCoverage(goenv *env, srcPath, srcName, coverVar, mode, outPath string) error {
 
-	//////////////////////////////////////////////////////////////////////////////////////////////
-	// Implementing a different mode (lets say mode=func) doesn't broke the current implementation
 	if mode == "func" {
 		err := instrumentForFunctionCoverage(srcPath, srcName, coverVar, outPath)
 		if err != nil {
@@ -80,6 +78,7 @@ func instrumentForCoverage(goenv *env, srcPath, srcName, coverVar, mode, outPath
 			return err
 		}
 	}
+
 	return registerCoverage(outPath, coverVar, srcName, mode)
 }
 
@@ -130,10 +129,11 @@ func registerCoverage(coverSrc, varName, srcName, mode string) error {
 	}
 
 	// Append an init function.
+
 	if mode == "func" {
 		fmt.Fprintf(&buf, `
 func init() {
-	%s.RegisterFileFuncCover(%s.SourcePath, %s.FuncNames, %s.FuncLines, %s.Counts)
+	%s.RegisterFileFuncCover(%s.SourcePath, %s.FuncNames, %s.FuncLines, %s.Flags)
 }`, coverdataName, varName, varName, varName, varName)
 	} else {
 		fmt.Fprintf(&buf, `
@@ -142,9 +142,9 @@ func init() {
 		%[3]s.Count[:],
 		%[3]s.Pos[:],
 		%[3]s.NumStmt[:])
-}`, coverdataName, srcName, varName)
+}
+`, coverdataName, srcName, varName)
 	}
-
 	if err := ioutil.WriteFile(coverSrc, buf.Bytes(), 0666); err != nil {
 		return fmt.Errorf("registerCoverage: %v", err)
 	}
