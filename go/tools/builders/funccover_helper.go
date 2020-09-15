@@ -66,7 +66,7 @@ func astToByte(fset *token.FileSet, f *ast.File) []byte {
 	return buf.Bytes()
 }
 
-// Writes necessary set instrucions for instrumentation to function definitions
+// InsertInstructions writes necessary set instrucions for instrumentation to function definitions
 func InsertInstructions(w io.Writer, content []byte, coverVar string) (bool, error) {
 
 	fset := token.NewFileSet()
@@ -108,9 +108,7 @@ func InsertInstructions(w io.Writer, content []byte, coverVar string) (bool, err
 	// 	defer LastCallForFunccoverReport()
 	//	...
 	// }
-
 	eventIndex := 0
-
 	for i := 0; i < contentLength; i++ {
 		if eventIndex < len(events) && i == events[eventIndex] {
 			fmt.Fprintf(w, "\n\t%s.Flags[%v] = true;", coverVar, eventIndex)
@@ -125,7 +123,7 @@ func InsertInstructions(w io.Writer, content []byte, coverVar string) (bool, err
 	return mainLbrace != -1, nil
 }
 
-// Writes the declaration of cover variable to the end of the given source file writer using go templates
+// declCover writes the declaration of cover variable to the end of the given source file writer using go templates
 // If source has a main function, defines LastCallForFunccoverReport function variable and assign an empty
 // function to it
 // Embedded report libraries can implement an init() function that assigns LastCallForFunccoverReport

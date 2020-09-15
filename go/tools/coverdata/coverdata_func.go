@@ -14,6 +14,7 @@
 
 package coverdata
 
+// FunctionCover contains the coverage data needed
 type FunctionCover struct {
 	SourcePaths   []string
 	FunctionNames []string
@@ -21,9 +22,11 @@ type FunctionCover struct {
 	Flags         []*bool
 }
 
+// FuncCover keeps the coverage data
+// It is exported so that other packages can use it to report coverage
 var FuncCover FunctionCover
 
-// Registers functions  to FuncCover
+// RegisterFileFuncCover eegisters functions to exported variable FuncCover
 func RegisterFileFuncCover(SourcePath string, FuncNames []string, FuncLines []int32, Flags []bool) {
 	for i, funcName := range FuncNames {
 		FuncCover.SourcePaths = append(FuncCover.SourcePaths, SourcePath)

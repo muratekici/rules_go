@@ -22,7 +22,7 @@ import (
 	"io/ioutil"
 )
 
-// Keeps the data necessary for instrumentation
+// Instrumentation keeps the data necessary for instrumentation
 type Instrumentation struct {
 	fset     *token.FileSet
 	content  []byte
@@ -31,7 +31,7 @@ type Instrumentation struct {
 	srcName  string
 }
 
-// SaveFile, saves given file to instrumentation
+// saveFile saves given file to instrumentation
 func (h *Instrumentation) saveFile(src string) error {
 
 	if h.fset == nil {
@@ -48,7 +48,7 @@ func (h *Instrumentation) saveFile(src string) error {
 	return nil
 }
 
-// Instrument, instruments the content saved in Instrumentation
+// instrument function instruments the content saved in Instrumentation
 func (h *Instrumentation) instrument() ([]byte, error) {
 
 	var funcCover = []FuncCoverBlock{}

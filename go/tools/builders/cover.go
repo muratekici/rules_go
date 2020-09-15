@@ -129,7 +129,6 @@ func registerCoverage(coverSrc, varName, srcName, mode string) error {
 	}
 
 	// Append an init function.
-
 	if mode == "func" {
 		fmt.Fprintf(&buf, `
 func init() {
