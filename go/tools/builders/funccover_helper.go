@@ -25,16 +25,15 @@ import (
 	"text/template"
 )
 
-// FuncCoverBlock contains tha name and line of a function
-// Line contains the line of the definition in the source code
-type FuncCoverBlock struct {
+// Contains the function information.
+// Line keeps the definition line of the function in the source code.
+type funcCoverBlock struct {
 	Name string
 	Line int32
 }
 
-// SaveFuncs parses given source code and returns a FuncCover instance
-func SaveFuncs(src string, content []byte) ([]FuncCoverBlock, error) {
-
+// Parses given source code and returns a funcCoverBlock array.
+func saveFuncs(src string, content []byte) ([]funcCoverBlock, error) {
 	fset := token.NewFileSet()
 
 	parsedFile, err := parser.ParseFile(fset, "", content, parser.ParseComments)
@@ -42,14 +41,17 @@ func SaveFuncs(src string, content []byte) ([]FuncCoverBlock, error) {
 		return nil, err
 	}
 
-	var funcBlocks []FuncCoverBlock
+	var funcBlocks []funcCoverBlock
 
-	// Find function declerations to instrument and save them to funcCover
+	// Finds function declerations to instrument and saves them to funcCover
 	for _, decl := range parsedFile.Decls {
 		switch t := decl.(type) {
-		// Function Decleration
+		// Function decleration is found.
 		case *ast.FuncDecl:
-			funcBlocks = append(funcBlocks, FuncCoverBlock{
+			if t.Body == nil {
+				continue
+			}
+			funcBlocks = append(funcBlocks, funcCoverBlock{
 				Name: t.Name.Name,
 				Line: int32(fset.Position(t.Pos()).Line),
 			})
@@ -66,9 +68,9 @@ func astToByte(fset *token.FileSet, f *ast.File) []byte {
 	return buf.Bytes()
 }
 
-// InsertInstructions writes necessary set instrucions for instrumentation to function definitions
-func InsertInstructions(w io.Writer, content []byte, coverVar string) (bool, error) {
-
+// Inserts necessary set instrucions for instrumentation to function definitions.
+// Writes the instrumented output using w.
+func insertInstructions(w io.Writer, content []byte, coverVar string) (bool, error) {
 	fset := token.NewFileSet()
 	parsedFile, err := parser.ParseFile(fset, "", content, parser.ParseComments)
 	if err != nil {
@@ -79,16 +81,17 @@ func InsertInstructions(w io.Writer, content []byte, coverVar string) (bool, err
 	var events []int
 	var mainLbrace = -1
 
-	// Iterates over functions to find the positions to insert instructions
-	// Saves the positions to array events
-	// Finds the position of main function if exists
-	// This will be used to insert a defer call, so that coverage can be collected just before exit
-	// Positions are changed due to imports but saved information in funcCover will be the same with the
-	// initial source code
+	// Iterates over functions to find the positions to insert instructions.
+	// Saves the positions to array events.
+	// Finds the position of main function if exists.
+	// This will be used to insert a defer call to an exit hook for coverage report on exit.
 	for _, decl := range parsedFile.Decls {
 		switch t := decl.(type) {
-		// Function Decleration
+		// Function decleration is found.
 		case *ast.FuncDecl:
+			if t.Body == nil {
+				continue
+			}
 			events = append(events, int(t.Body.Lbrace))
 			if t.Name.Name == "main" {
 				mainLbrace = int(t.Body.Lbrace) - 1
@@ -96,39 +99,38 @@ func InsertInstructions(w io.Writer, content []byte, coverVar string) (bool, err
 		}
 	}
 
-	// Writes the instrumented code using w io.Writer
-	// Insert set instructions to the functions
+	// Writes the instrumented code using w io.Writer.
+	// Insert set instructions to the functions.
 	// f() {
-	// 	coverVar.Counts[funcNumber] = 1;
+	// 	coverVar.Executed[funcNumber] = true;
 	// 	...
 	// }
-	// Also inserts defer LastCallForFunccoverReport() to the beginning of main()
-	// Initially this is just an empty function but handler can override it
+	// Also inserts "defer (*FuncCoverExitHook)()" to the beginning of main().
+	// Initially hook just points to an empty function but the handler can override it.
 	// func main {
-	// 	defer LastCallForFunccoverReport()
+	// 	defer (*FuncCoverExitHook)()
 	//	...
 	// }
 	eventIndex := 0
 	for i := 0; i < contentLength; i++ {
 		if eventIndex < len(events) && i == events[eventIndex] {
-			fmt.Fprintf(w, "\n\t%s.Flags[%v] = true;", coverVar, eventIndex)
+			fmt.Fprintf(w, "\n\t%s.Executed[%v] = true;", coverVar, eventIndex)
 			eventIndex++
 		}
-		fmt.Fprintf(w, "%s", string(content[i]))
+		fmt.Fprintf(w, "%s", string(content[i:i+1]))
 		if i == mainLbrace {
-			fmt.Fprintf(w, "\n\tdefer (*LastCallForFunccoverReport)()\n")
+			fmt.Fprintf(w, "\n\tdefer (*FuncCoverExitHook)()\n")
 		}
 	}
 
 	return mainLbrace != -1, nil
 }
 
-// declCover writes the declaration of cover variable to the end of the given source file writer using go templates
-// If source has a main function, defines LastCallForFunccoverReport function variable and assign an empty
-// function to it
-// Embedded report libraries can implement an init() function that assigns LastCallForFunccoverReport
-// a different function referance
-func declCover(w io.Writer, coverVar, source string, hasMain bool, funcCover []FuncCoverBlock) {
+// Writes the declaration of cover variables using go templates.
+// If source has a main function, defines FuncCoverExitHook function pointer.
+// Initializes FuncCoverExitHook with an empty function.
+// Embedded report libraries can implement an init() function to use FuncCoverExitHook.
+func declCover(w io.Writer, coverVar, source string, hasMain bool, funcCover []funcCoverBlock) {
 
 	funcTemplate, err := template.New("cover variables").Parse(declTmpl)
 
@@ -140,7 +142,7 @@ func declCover(w io.Writer, coverVar, source string, hasMain bool, funcCover []F
 		CoverVar   string
 		SourceName string
 		HasMain    bool
-		FuncBlocks []FuncCoverBlock
+		FuncBlocks []funcCoverBlock
 	}{coverVar, source, hasMain, funcCover}
 
 	err = funcTemplate.Execute(w, declParams)
@@ -155,7 +157,7 @@ var {{.CoverVar}} = struct {
 	SourcePath		string
 	FuncNames		[]string
 	FuncLines		[]int32
-	Flags			[]bool
+	Executed		[]bool
 } {
 	SourcePath: "{{.SourceName}}",
 	FuncNames: []string{ {{range .FuncBlocks}}
@@ -164,11 +166,11 @@ var {{.CoverVar}} = struct {
 	FuncLines: []int32{ {{range .FuncBlocks}}
 		{{.Line}},{{end}}
 	},
-	Flags: []bool{ {{range .FuncBlocks}}
+	Executed: []bool{ {{range .FuncBlocks}}
 		false,{{end}}
 	},
 }
 
 {{ if eq .HasMain true }}
-var EmptyVoidFunctionThisNameIsLongToAvoidCollusions082 = func() {}
-var LastCallForFunccoverReport *func() = &EmptyVoidFunctionThisNameIsLongToAvoidCollusions082{{end}}`
+var FuncCoverExitHookEmptyFunc = func() {}
+var FuncCoverExitHook *func() = &FuncCoverExitHookEmptyFunc{{end}}`

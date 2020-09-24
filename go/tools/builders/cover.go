@@ -66,7 +66,6 @@ func cover(args []string) error {
 // a coverage-instrumented version of the file. It also registers the file
 // with the coverdata package.
 func instrumentForCoverage(goenv *env, srcPath, srcName, coverVar, mode, outPath string) error {
-
 	if mode == "func" {
 		err := instrumentForFunctionCoverage(srcPath, srcName, coverVar, outPath)
 		if err != nil {
@@ -128,11 +127,11 @@ func registerCoverage(coverSrc, varName, srcName, mode string) error {
 		return fmt.Errorf("registerCoverage: could not reformat coverage source %s: %v", coverSrc, err)
 	}
 
-	// Append an init function.
+	// Append an init function accordingly to the coverage mode.
 	if mode == "func" {
 		fmt.Fprintf(&buf, `
 func init() {
-	%s.RegisterFileFuncCover(%s.SourcePath, %s.FuncNames, %s.FuncLines, %s.Flags)
+	%s.RegisterFileFunc(%s.SourcePath, %s.FuncNames, %s.FuncLines, %s.Executed)
 }`, coverdataName, varName, varName, varName, varName)
 	} else {
 		fmt.Fprintf(&buf, `

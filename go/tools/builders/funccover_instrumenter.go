@@ -22,8 +22,8 @@ import (
 	"io/ioutil"
 )
 
-// Instrumentation keeps the data necessary for instrumentation
-type Instrumentation struct {
+// funccoverInstrumenter struct have the data necessary for instrumentation.
+type funccoverInstrumenter struct {
 	fset     *token.FileSet
 	content  []byte
 	coverVar string
@@ -31,9 +31,8 @@ type Instrumentation struct {
 	srcName  string
 }
 
-// saveFile saves given file to instrumentation
-func (h *Instrumentation) saveFile(src string) error {
-
+// Saves given file's content to funccoverInstrumenter instance.
+func (h *funccoverInstrumenter) saveFile(src string) error {
 	if h.fset == nil {
 		h.fset = token.NewFileSet()
 	}
@@ -48,13 +47,12 @@ func (h *Instrumentation) saveFile(src string) error {
 	return nil
 }
 
-// instrument function instruments the content saved in Instrumentation
-func (h *Instrumentation) instrument() ([]byte, error) {
-
-	var funcCover = []FuncCoverBlock{}
+// Instruments the source code content saved in h.
+func (h *funccoverInstrumenter) instrument() ([]byte, error) {
+	var funcCover = []funcCoverBlock{}
 
 	// Saves the function data to funcCover
-	funcCover, err := SaveFuncs(h.srcName, h.content)
+	funcCover, err := saveFuncs(h.srcName, h.content)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +60,7 @@ func (h *Instrumentation) instrument() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	// Inserts necessary instructions to the functions
-	hasMain, err := InsertInstructions(buf, h.content, h.coverVar)
+	hasMain, err := insertInstructions(buf, h.content, h.coverVar)
 
 	if err != nil {
 		return nil, err
@@ -74,35 +72,33 @@ func (h *Instrumentation) instrument() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// writeInstrumented writes the instrumented source to h.outPath
-func (h *Instrumentation) writeInstrumented(instrumented []byte) error {
+// Writes the instrumented content to h.outPath
+func (h *funccoverInstrumenter) writeInstrumented(instrumented []byte) error {
 	if err := ioutil.WriteFile(h.outPath, instrumented, 0666); err != nil {
 		return fmt.Errorf("Instrumentation failed: %v", err)
 	}
 	return nil
 }
 
-// instrumentForFunctionCoverage instruments the file given and writes it to outPath
+// Instruments the file given and writes it to outPath
 func instrumentForFunctionCoverage(srcPath, srcName, coverVar, outPath string) error {
-
-	var instrumentation = Instrumentation{
+	var instrumenter = funccoverInstrumenter{
 		coverVar: coverVar,
 		outPath:  outPath,
 		srcName:  srcName,
 	}
 
-	err := instrumentation.saveFile(srcPath)
+	err := instrumenter.saveFile(srcPath)
 	if err != nil {
 		return err
 	}
 
-	instrumented, err := instrumentation.instrument()
+	instrumented, err := instrumenter.instrument()
 	if err != nil {
 		return err
 	}
 
-	err = instrumentation.writeInstrumented(instrumented)
-
+	err = instrumenter.writeInstrumented(instrumented)
 	if err != nil {
 		return err
 	}

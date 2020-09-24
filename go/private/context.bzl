@@ -467,7 +467,6 @@ def go_context(ctx, attr = None):
         nogo = nogo,
         coverdata = coverdata,
         coverage_enabled = ctx.configuration.coverage_enabled,
-        coverage_mode = ctx.configuration.coverage_mode,
         coverage_instrumented = ctx.coverage_instrumented(),
         env = env,
         tags = tags,
@@ -765,6 +764,7 @@ def _go_config_impl(ctx):
         strip = ctx.attr.strip[BuildSettingInfo].value,
         debug = ctx.attr.debug[BuildSettingInfo].value,
         linkmode = ctx.attr.linkmode[BuildSettingInfo].value,
+        covermode = ctx.attr.covermode[BuildSettingInfo].value,
         tags = ctx.attr.gotags[BuildSettingInfo].value,
         stamp = ctx.attr.stamp,
 
@@ -800,6 +800,10 @@ go_config = rule(
             providers = [BuildSettingInfo],
         ),
         "linkmode": attr.label(
+            mandatory = True,
+            providers = [BuildSettingInfo],
+        ),
+        "covermode": attr.label(
             mandatory = True,
             providers = [BuildSettingInfo],
         ),

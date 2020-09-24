@@ -14,24 +14,24 @@
 
 package coverdata
 
-// FunctionCover contains the coverage data needed
-type FunctionCover struct {
-	SourcePaths   []string
-	FunctionNames []string
-	FunctionLines []int32
-	Flags         []*bool
+// FuncCover contains the coverage data needed
+type FuncCover struct {
+	SourcePaths []string
+	FuncNames   []string
+	FuncLines   []int32
+	Executed    []*bool
 }
 
-// FuncCover keeps the coverage data
-// It is exported so that other packages can use it to report coverage
-var FuncCover FunctionCover
+// FuncCoverData keeps the coverage data in runtime
+// Instrumented packages registers their coverage data to FuncCoverData
+var FuncCoverData FuncCover
 
-// RegisterFileFuncCover eegisters functions to exported variable FuncCover
-func RegisterFileFuncCover(SourcePath string, FuncNames []string, FuncLines []int32, Flags []bool) {
+// RegisterFileFunc eegisters functions to exported variable FuncCoverData
+func RegisterFileFunc(SourcePath string, FuncNames []string, FuncLines []int32, Executed []bool) {
 	for i, funcName := range FuncNames {
-		FuncCover.SourcePaths = append(FuncCover.SourcePaths, SourcePath)
-		FuncCover.FunctionNames = append(FuncCover.FunctionNames, funcName)
-		FuncCover.FunctionLines = append(FuncCover.FunctionLines, FuncLines[i])
-		FuncCover.Flags = append(FuncCover.Flags, &(Flags[i]))
+		FuncCoverData.SourcePaths = append(FuncCoverData.SourcePaths, SourcePath)
+		FuncCoverData.FuncNames = append(FuncCoverData.FuncNames, funcName)
+		FuncCoverData.FuncLines = append(FuncCoverData.FuncLines, FuncLines[i])
+		FuncCoverData.Executed = append(FuncCoverData.Executed, &(Executed[i]))
 	}
 }

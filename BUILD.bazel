@@ -109,6 +109,7 @@ go_config(
     debug = "//go/config:debug",
     gotags = "//go/config:tags",
     linkmode = "//go/config:linkmode",
+    covermode = "//go/config:covermode",
     msan = "//go/config:msan",
     pure = "//go/config:pure",
     race = "//go/config:race",
